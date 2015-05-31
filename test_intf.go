@@ -72,8 +72,8 @@ func main() {
 	var vi, pi interface{} = u, &u
 	// vi.(User).name = "SIMBA" // Error: cannot assign to vi.(User).name
 	pi.(*User).name = "SIMBA"
-	fmt.Printf("%v\n", vi.(User)) // vi is a readonly copy of u
-	fmt.Printf("%v\n", pi.(*User))
+	fmt.Printf("%v\n", vi.(User))  // vi is a readonly copy of u
+	fmt.Printf("%v\n", pi.(*User)) // Printf will call u.String()
 
 	println("------------------------------")
 	if i, ok := pi.(fmt.Stringer); ok {
