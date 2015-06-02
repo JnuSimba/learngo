@@ -16,6 +16,8 @@ func sum(id int) {
 }
 
 func main() {
+	runtime.GOMAXPROCS(2)
+
 	wg := new(sync.WaitGroup)
 	/*	wg.Add(2)
 
