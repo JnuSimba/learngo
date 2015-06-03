@@ -2,6 +2,8 @@ package main
 
 import "unsafe"
 import "time"
+import "runtime"
+import "fmt"
 
 //  GODEBUG="gctrace=1" ../../bin/test_gc
 type data struct {
@@ -18,6 +20,7 @@ func test() uintptr {
 	return uintptr(unsafe.Pointer(p))
 }
 
+// the object hold by uintptr will be gc
 func test_uintptr() {
 	const N = 1000
 	cache := new([N]uintptr)
@@ -38,7 +41,8 @@ func test2() unsafe.Pointer {
 	return unsafe.Pointer(&d.y)
 }
 
-func test_unsafe_pointer1() {
+// the object hold by unsafe.Pointer will not be gc
+func test_unsafe_pointer() {
 	const N = 1000
 	cache := new([N]unsafe.Pointer)
 
@@ -49,8 +53,30 @@ func test_unsafe_pointer1() {
 	}
 }
 
+type Data struct {
+	d [1024 * 1024]byte
+	o *Data
+}
+
+// cycle ref + runtime.SetFinalizer will be memory leak
+// go build -gcflags "-N -l"
+// GODEBUG="gctrace=1" ../../bin/test_gc
+func test_setfinalizer() {
+	var a, b Data
+	a.o = &b
+	b.o = &a
+
+	runtime.SetFinalizer(&a, func(d *Data) { fmt.Printf("a %p final.\n", d) })
+	runtime.SetFinalizer(&b, func(d *Data) { fmt.Printf("b %p final.\n", d) })
+}
+
 func main() {
 	test_uintptr()
 	println("===========================================")
-	test_unsafe_pointer1()
+	test_unsafe_pointer()
+	println("===========================================")
+	for {
+		test_setfinalizer()
+		time.Sleep(time.Millisecond)
+	}
 }
