@@ -51,21 +51,25 @@ func test_asyn() {
 }
 
 func test_feature() {
-	/*
-		var a, b chan int = make(chan int), make(chan int, 3) // buffer size not count
-		a <- 1
-		fmt.Println(len(a), cap(a)) // 0 0
-		fmt.Println(len(b), cap(b)) // 1 3
-	*/
-	/*
-		c := make(chan int, 3)
-		var send chan<- int = c // send-ony
-		var recv <-chan int = c // receive-only
-		send <- 1
-		// <-send // Error: receive from send-only type chan<- int
-		<-recv
-		// recv <- 2 // Error: send to receive-only type <-chan int
-	*/
+
+	var a, b chan int = make(chan int, 1), make(chan int, 3) // buffer size not count
+
+	// if ' a := make(chan int) '  that it's unbuffered channel, it will block until sb receive the message.
+	// so u must put ' a <- 1' in a new goroutine or receive message in a new goroutine before it.
+	// or that code will throw error:all goroutines are asleep - deadlock!
+	a <- 1
+	close(a)
+	fmt.Println(len(a), cap(a)) // 1 1
+	fmt.Println(len(b), cap(b)) // 0 3
+
+	c := make(chan int, 3)
+	var send chan<- int = c // send-ony
+	var recv <-chan int = c // receive-only
+	send <- 1
+	// <-send // Error: receive from send-only type chan<- int
+	<-recv
+	// recv <- 2 // Error: send to receive-only type <-chan int
+
 }
 
 func test_select() {
@@ -135,17 +139,27 @@ func Process(req *Request) {
 
 func main() {
 	runtime.GOMAXPROCS(2)
+	/*
+		test_syn()
+		println("=========================================")
+		test_asyn()
+		println("=========================================")
+		test_select()
+		println("=========================================")
+	*/
 
-	test_syn()
-	println("=========================================")
-	test_asyn()
-	println("=========================================")
-	test_select()
-	println("=========================================")
-	//	t := NewTest()
-	//	println(<-t)
-	println("=========================================")
-	req := NewRequest(10, 20, 30)
-	Process(req)
-	fmt.Println(<-req.ret)
+	/*
+		t := NewTest()
+		println(<-t)
+	*/
+
+	/*
+		println("=========================================")
+		req := NewRequest(10, 20, 30)
+		Process(req)
+		fmt.Println(<-req.ret)
+	*/
+
+	println("====================================")
+	test_feature()
 }
