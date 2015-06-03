@@ -41,12 +41,35 @@ func test_access() {
 	f, _ = t.FieldByName("Username") // member of embed field
 	fmt.Println(f.Name)
 
-	f = t.FieldByIndex([]int{0, 1}) // Admin[0] -> User[1] -> age
+	f = t.FieldByIndex([]int{0, 1}) // Admin[0] -> User[1] -> Age
 	fmt.Println(f.Name)
 }
 
-func (*User) ToString() {}
-func (Admin) test()     {}
+func (*User) Sum(s string, x ...int) string {
+	c := 0
+	for _, n := range x {
+		c += n
+	}
+	return fmt.Sprintf(s, c)
+}
+
+func (Admin) Test(x, y int) (int, int) {
+	return x + 100, y + 100
+}
+
+func info(m reflect.Method) {
+	t := m.Type
+
+	fmt.Println(m.Name)
+
+	for i, n := 0, t.NumIn(); i < n; i++ {
+		fmt.Printf(" in[%d] %v\n", i, t.In(i))
+	}
+
+	for i, n := 0, t.NumOut(); i < n; i++ {
+		fmt.Printf(" out[%d] %v\n", i, t.Out(i))
+	}
+}
 
 func test_method() {
 	var u Admin
@@ -63,6 +86,43 @@ func test_method() {
 
 	fmt.Println("----pointer interface ---")
 	methods(reflect.TypeOf(&u))
+	println("==================================")
+
+	d := new(Admin)
+	t := reflect.TypeOf(d)
+	test, _ := t.MethodByName("Test")
+	info(test)
+	sum, _ := t.MethodByName("Sum")
+	info(sum)
+
+	println("==================================")
+	// dynamic call
+	tv := reflect.ValueOf(d)
+	exec := func(name string, in []reflect.Value) {
+		m := tv.MethodByName(name)
+		out := m.Call(in)
+
+		for _, v := range out {
+			fmt.Println(v.Interface())
+		}
+	}
+
+	exec("Test", []reflect.Value{
+		reflect.ValueOf(1),
+		reflect.ValueOf(2),
+	})
+	println("-----------------------------")
+
+	in := []reflect.Value{
+		reflect.ValueOf("result = %d"),
+		reflect.ValueOf([]int{1, 2}),
+	}
+	m := tv.MethodByName("Sum")
+	out := m.CallSlice(in)
+	for _, v := range out {
+		fmt.Println(v.Interface())
+	}
+
 }
 
 func test_metadata() {
@@ -131,15 +191,32 @@ func test_value() {
 	fmt.Println(v.FieldByName("Age").Int())
 	fmt.Println(v.FieldByIndex([]int{0, 1}).Int())
 
-	arr := reflect.ValueOf([]int{1, 2, 3})
-	for i, n := 0, arr.Len(); i < n; i++ {
-		fmt.Println(arr.Index(i).Int())
+	ar := reflect.ValueOf([]int{1, 2, 3})
+	for i, n := 0, ar.Len(); i < n; i++ {
+		fmt.Println(ar.Index(i).Int())
 	}
 
 	ma := reflect.ValueOf(map[string]int{"a": 1, "b": 2})
 	for _, k := range ma.MapKeys() {
 		fmt.Println(k.String(), ma.MapIndex(k).Int())
 	}
+
+	arr := make([]int, 0, 10)
+	av := reflect.ValueOf(&arr).Elem()
+	av.SetLen(2)
+	av.Index(0).SetInt(100)
+	av.Index(1).SetInt(200)
+
+	fmt.Println(av.Interface(), arr)
+
+	av2 := reflect.Append(av, reflect.ValueOf(300))
+	av2 = reflect.AppendSlice(av2, reflect.ValueOf([]int{400, 500}))
+	fmt.Println(av2.Interface())
+	m := map[string]int{"a": 1}
+	mv := reflect.ValueOf(&m).Elem()
+	mv.SetMapIndex(reflect.ValueOf("a"), reflect.ValueOf(100)) //update
+	mv.SetMapIndex(reflect.ValueOf("b"), reflect.ValueOf(200)) // add
+	fmt.Println(mv.Interface(), m)
 }
 
 func test_isvalid() {
@@ -174,46 +251,33 @@ func test_isvalid() {
 	fmt.Println(u, pe.Interface().(User))
 	println("---------------------------------")
 
-	arr := make([]int, 0, 10)
-	av := reflect.ValueOf(&arr).Elem()
-	av.SetLen(2)
-	av.Index(0).SetInt(100)
-	av.Index(1).SetInt(200)
-
-	fmt.Println(av.Interface(), arr)
-
-	av2 := reflect.Append(av, reflect.ValueOf(300))
-	av2 = reflect.AppendSlice(av2, reflect.ValueOf([]int{400, 500}))
-	fmt.Println(av2.Interface())
-	m := map[string]int{"a": 1}
-	mv := reflect.ValueOf(&m).Elem()
-	mv.SetMapIndex(reflect.ValueOf("a"), reflect.ValueOf(100)) //update
-	mv.SetMapIndex(reflect.ValueOf("b"), reflect.ValueOf(200)) // add
-	fmt.Println(mv.Interface(), m)
 }
 
 func main() {
 	/*
-					test_access()
-					println("==========================")
-					test_type()
-					println("==========================")
-					test_method()
-					println("==========================")
-					test_metadata()
-					println("==========================")
-					get_type()
+		test_access()
+		println("==========================")
+		test_type()
+		println("==========================")
+		test_metadata()
+		println("==========================")
+		get_type()
 
-				println("==========================")
-				test_impl()
+		println("==========================")
+		test_impl()
 
-			println("==========================")
-			test_align()
+		println("==========================")
+		test_align()
+
+
+
+		println("==========================")
+		test_isvalid()
 
 		println("==========================")
 		test_value()
+		println("==========================")
 	*/
+	test_method()
 
-	println("==========================")
-	test_isvalid()
 }
